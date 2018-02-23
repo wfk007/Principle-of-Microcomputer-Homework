@@ -1,0 +1,317 @@
+Microsoft (R) Macro Assembler Version 6.11		    12/26/14 23:20:57
+tempfile.asm						     Page 1 - 1
+
+
+ = 0288				porta        equ 288h
+ = 0289				portb        equ 289h
+ = 028B				portc        equ 28bh
+				assume cs:code
+ 0000				code   segment
+ 0000				start:  
+ 0000  BA 028B			   begin:  mov     dx,portc           
+ 0003  B0 82			           mov     al,82h        ;A口方式0输出,B口方式0,输入
+ 0005  EE			           out     dx,al                         
+				;测试8个开关的状态           
+ 0006  BA 0289			s1:        mov     dx,portb                ; B 口读入开关状态
+ 0009  EC			           in      al,dx
+ 000A  B4 FF			           mov     ah,0ffh
+				           ;al读入开关状态
+ 000C  84 C4			           test    al,ah                   
+ 000E  74 44			           jz      s2   ;开关都是闭合转到s2
+ 0010  B4 FB			           mov     ah,0fBh
+ 0012  8A D8			           mov     bl,al
+ 0014  0A C4			           or      al,ah
+ 0016  3C FF			           cmp     al,0ffh
+ 0018  8A C3			           mov     al,bl
+ 001A  74 38			           jz      s2  ;k2=1转到s2
+				           ;以下分3种情况
+				           ;0000 0010---灯全灭
+				           ;0000 0011---停止闪烁即当前闪烁的灯一直亮
+				           ;0000 0001---按要求运行
+				           
+ 001C  A8 01			           test    al,01h
+ 001E  74 34			           jz      s2   ;0000 0010跳转到s2,灯全灭
+ 0020  A8 02			           test    al,02h
+ 0022  74 00			           jz      flag  ;0000 0001跳转到s3,按要求运行
+ 0024  B9 0004			flag:      mov     cx,4 
+ 0027  B0 80			           mov     al,80h;1000 0000B 
+ 0029  EB 43			           jmp     s3         
+				           ;0000 0011 停止闪烁,全部都亮
+ 002B  B0 FF			flag1:     mov     al,0FFH
+ 002D  BA 0288			           mov     dx,porta
+ 0030  EE			           out     dx,al
+				           
+				           ;测试开关的状态
+ 0031  52			flag2:     push    dx
+ 0032  50			           push    ax
+ 0033  BA 0289			           mov     dx,portb
+ 0036  EC			           in      al,dx
+				           ;检测K2是否闭合 
+ 0037  B4 04			           mov     ah,04h
+ 0039  84 C4			           test    al,ah
+ 003B  74 04			           jz      a11
+ 003D  58			           pop     ax
+ 003E  5A			           pop     dx 
+ 003F  EB 20			           jmp     light
+ 0041  B4 02			a11:       mov     ah,02h
+ 0043  84 C4			           test    al,ah
+ 0045  74 04			           jz      a12
+ 0047  58			           pop     ax
+ 0048  5A			           pop     dx
+ 0049  EB E0			           jmp     flag1
+ 004B  58			a12:       pop     ax
+ 004C  5A			           pop     dx
+ 004D  B9 0004			           mov     cx,4 
+ 0050  B0 80			           mov     al,80h;重新开始
+ 0052  EB 1A			           jmp     s3
+				          ;检测开关状态结束
+				           
+				           
+				        
+				;开关都是闭合的  或K2=1        
+ 0054  B3 00			s2:        mov     bl,0
+ 0056  8A C3			           mov     al,bl                 
+ 0058  BA 0288			           mov     dx,porta                        
+ 005B  EE			           out     dx,al
+ 005C  E8 00D8			           call    delay
+ 005F  EB A5			           jmp     s1  
+				;K2=1            
+ 0061  B3 00			light:     mov     bl,0
+ 0063  8A C3			           mov     al,bl                 
+ 0065  BA 0288			           mov     dx,porta                        
+ 0068  EE			           out     dx,al
+ 0069  E8 00CB			           call    delay
+ 006C  EB C3			           jmp     flag2 
+				;s3按要求运行                           
+ 006E				s3:        
+ 006E  BA 0288			           mov     dx,porta
+ 0071  EE			           out     dx,al
+ 0072  E8 00C2			           call    delay;延时一秒
+ 0075  51			           push    cx
+ 0076  B1 02			           mov     cl,2
+ 0078  D2 E8			           shr     al,cl
+ 007A  59			           pop     cx
+				           
+				           ;测试开关的状态
+ 007B  52			           push    dx
+ 007C  50			           push    ax
+ 007D  BA 0289			           mov     dx,portb
+ 0080  EC			           in      al,dx
+				           ;检测K2是否闭合 
+ 0081  B4 04			           mov     ah,04h
+ 0083  84 C4			           test    al,ah
+ 0085  74 04			           jz      a1
+ 0087  58			           pop     ax
+ 0088  5A			           pop     dx 
+ 0089  EB C9			           jmp     s2
+ 008B  B4 02			a1:        mov     ah,02h
+ 008D  84 C4			           test    al,ah
+ 008F  74 04			           jz      a2
+ 0091  58			           pop     ax
+ 0092  5A			           pop     dx
+ 0093  EB 96			           jmp     flag1
+ 0095  58			a2:        pop     ax
+ 0096  5A			           pop     dx
+				           ;检测开关状态结束
+				           
+ 0097  E2 D5			           loop    s3
+ 0099  B9 0005			           mov     cx,5
+				           
+ 009C  B0 AA			s4:        mov     al,0aah
+ 009E  BA 0288			           mov     dx,porta
+ 00A1  EE			           out     dx,al
+ 00A2  E8 00A3			           call    delay1
+ 00A5  B0 00			           mov     al,00h
+ 00A7  EE			           out     dx,al  
+				                   
+				           ;测试开关的状态
+ 00A8  52			           push    dx
+ 00A9  50			           push    ax
+ 00AA  BA 0289			           mov     dx,portb
+ 00AD  EC			           in      al,dx
+				           ;检测K2是否闭合 
+ 00AE  B4 04			           mov     ah,04h
+ 00B0  84 C4			           test    al,ah
+ 00B2  74 04			           jz      a3
+ 00B4  58			           pop     ax
+ 00B5  5A			           pop     dx 
+ 00B6  EB 9C			           jmp     s2
+ 00B8  B4 02			a3:        mov     ah,02h
+ 00BA  84 C4			           test    al,ah
+ 00BC  74 05			           jz      a4
+ 00BE  58			           pop     ax
+ 00BF  5A			           pop     dx
+ 00C0  E9 FF68			           jmp     flag1
+ 00C3  58			a4:        pop     ax
+ 00C4  5A			           pop     dx
+				           ;检测开关状态结束
+				           
+ 00C5  E8 0080			           call    delay1
+ 00C8  E2 D2			           loop    s4
+
+				           
+ 00CA  E8 006A			           call    delay
+ 00CD  B9 0004			           mov     cx,4
+ 00D0  B0 40			           mov     al,40h;0100 0000B
+ 00D2				s5:            
+ 00D2  BA 0288			           mov     dx,porta
+ 00D5  EE			           out     dx,al
+ 00D6  E8 005E			           call    delay;延时一秒
+ 00D9  51			           push    cx
+ 00DA  B1 02			           mov     cl,2
+ 00DC  D2 E8			           shr     al,cl
+ 00DE  59			           pop     cx
+				           
+				           
+				           ;测试开关的状态
+ 00DF  52			           push    dx
+ 00E0  50			           push    ax
+ 00E1  BA 0289			           mov     dx,portb
+ 00E4  EC			           in      al,dx
+				           ;检测K2是否闭合 
+ 00E5  B4 04			           mov     ah,04h
+ 00E7  84 C4			           test    al,ah
+ 00E9  74 05			           jz      a5
+ 00EB  58			           pop     ax
+ 00EC  5A			           pop     dx 
+ 00ED  E9 FF64			           jmp     s2
+ 00F0  B4 02			a5:        mov     ah,02h
+ 00F2  84 C4			           test    al,ah
+ 00F4  74 05			           jz      a6
+ 00F6  58			           pop     ax
+ 00F7  5A			           pop     dx
+ 00F8  E9 FF30			           jmp     flag1
+ 00FB  58			a6:        pop     ax
+ 00FC  5A			           pop     dx
+				           ;检测开关状态结束
+				           
+ 00FD  E2 D3			           loop    s5
+ 00FF  B9 0005			           mov     cx,5
+ 0102  B0 55			s6:        mov     al,55h
+ 0104  BA 0288			           mov     dx,porta
+ 0107  EE			           out     dx,al
+ 0108  E8 003D			           call    delay1
+ 010B  B0 00			           mov     al,00h
+ 010D  EE			           out     dx,al
+				           
+				            ;测试开关的状态
+ 010E  52			           push    dx
+ 010F  50			           push    ax
+ 0110  BA 0289			           mov     dx,portb
+ 0113  EC			           in      al,dx
+				           ;检测K2是否闭合 
+ 0114  B4 04			           mov     ah,04h
+ 0116  84 C4			           test    al,ah
+ 0118  74 05			           jz      a7
+ 011A  58			           pop     ax
+ 011B  5A			           pop     dx 
+ 011C  E9 FF35			           jmp     s2
+ 011F  B4 02			a7:        mov     ah,02h
+ 0121  84 C4			           test    al,ah
+ 0123  74 05			           jz      a8
+ 0125  58			           pop     ax
+ 0126  5A			           pop     dx
+ 0127  E9 FF01			           jmp     flag1
+ 012A  58			a8:        pop     ax
+ 012B  5A			           pop     dx
+				           ;检测开关状态结束
+				           
+ 012C  E8 0019			           call    delay1
+ 012F  E2 D1			           loop    s6
+ 0131  E8 0003			           call    delay
+ 0134  E9 FEED			           jmp     flag
+				;延时1s子程序         
+ 0137				delay proc near                       
+ 0137  51			        push cx
+ 0138  50			        push ax
+ 0139  B8 00FA			        mov ax,250
+ 013C  B9 FFFF			x1:     mov cx,0ffffh
+ 013F  49			x2:     dec cx
+ 0140  75 FD			        jnz x2
+ 0142  48			        dec ax    
+ 0143  75 F7			        jnz x1
+ 0145  58			        pop ax
+ 0146  59			        pop cx
+ 0147  C3			        ret
+ 0148				delay endp
+				;延时闪烁子程序
+ 0148				delay1 proc near                       
+ 0148  51			        push cx
+ 0149  50			        push ax
+ 014A  B8 0064			        mov ax,100
+ 014D  B9 FFFF			x3:     mov cx,0ffffh
+ 0150  49			x4:     dec cx
+ 0151  75 FD			        jnz x4
+ 0153  48			        dec ax    
+ 0154  75 F7			        jnz x3
+ 0156  58			        pop ax
+ 0157  59			        pop cx
+ 0158  C3			        ret
+ 0159				delay1 endp
+ 0159				code   ends
+				end start
+
+
+
+
+
+
+
+
+Microsoft (R) Macro Assembler Version 6.11		    12/26/14 23:20:57
+tempfile.asm						     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+code . . . . . . . . . . . . . .	16 Bit	 0159	  Para	  Private 
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+delay1 . . . . . . . . . . . . .	P Near	 0148	  code	Length= 0011 Public
+  x3 . . . . . . . . . . . . . .	L Near	 014D	  code	
+  x4 . . . . . . . . . . . . . .	L Near	 0150	  code	
+delay  . . . . . . . . . . . . .	P Near	 0137	  code	Length= 0011 Public
+  x1 . . . . . . . . . . . . . .	L Near	 013C	  code	
+  x2 . . . . . . . . . . . . . .	L Near	 013F	  code	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+a11  . . . . . . . . . . . . . .	L Near	 0041	  code	
+a12  . . . . . . . . . . . . . .	L Near	 004B	  code	
+a1 . . . . . . . . . . . . . . .	L Near	 008B	  code	
+a2 . . . . . . . . . . . . . . .	L Near	 0095	  code	
+a3 . . . . . . . . . . . . . . .	L Near	 00B8	  code	
+a4 . . . . . . . . . . . . . . .	L Near	 00C3	  code	
+a5 . . . . . . . . . . . . . . .	L Near	 00F0	  code	
+a6 . . . . . . . . . . . . . . .	L Near	 00FB	  code	
+a7 . . . . . . . . . . . . . . .	L Near	 011F	  code	
+a8 . . . . . . . . . . . . . . .	L Near	 012A	  code	
+begin  . . . . . . . . . . . . .	L Near	 0000	  code	
+flag1  . . . . . . . . . . . . .	L Near	 002B	  code	
+flag2  . . . . . . . . . . . . .	L Near	 0031	  code	
+flag . . . . . . . . . . . . . .	L Near	 0024	  code	
+light  . . . . . . . . . . . . .	L Near	 0061	  code	
+porta  . . . . . . . . . . . . .	Number	 0288h	 
+portb  . . . . . . . . . . . . .	Number	 0289h	 
+portc  . . . . . . . . . . . . .	Number	 028Bh	 
+s1 . . . . . . . . . . . . . . .	L Near	 0006	  code	
+s2 . . . . . . . . . . . . . . .	L Near	 0054	  code	
+s3 . . . . . . . . . . . . . . .	L Near	 006E	  code	
+s4 . . . . . . . . . . . . . . .	L Near	 009C	  code	
+s5 . . . . . . . . . . . . . . .	L Near	 00D2	  code	
+s6 . . . . . . . . . . . . . . .	L Near	 0102	  code	
+start  . . . . . . . . . . . . .	L Near	 0000	  code	
+
+	   0 Warnings
+	   0 Errors
