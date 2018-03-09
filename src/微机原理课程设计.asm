@@ -38,7 +38,7 @@ flag1:     mov     al,0FFH
            out     dx,al
 
            ;测试开关的状态
-           push    dx
+flag2:     push    dx
            push    ax
            mov     dx,portb
            in      al,dx
@@ -48,7 +48,7 @@ flag1:     mov     al,0FFH
            jz      a11
            pop     ax
            pop     dx
-           jmp     s2
+           jmp     light
 a11:       mov     ah,02h
            test    al,ah
            jz      a12
@@ -57,6 +57,8 @@ a11:       mov     ah,02h
            jmp     flag1
 a12:       pop     ax
            pop     dx
+           mov     cx,4
+           mov     al,80h;重新开始
            jmp     s3
           ;检测开关状态结束
 
@@ -69,6 +71,13 @@ s2:        mov     bl,0
            out     dx,al
            call    delay
            jmp     s1
+;K2=1
+light:     mov     bl,0
+           mov     al,bl
+           mov     dx,porta
+           out     dx,al
+           call    delay
+           jmp     flag2
 ;s3按要求运行
 s3:
            mov     dx,porta
@@ -228,15 +237,16 @@ delay1 proc near
         mov ax,100
 x3:     mov cx,0ffffh
 x4:     dec cx
-        jnz x2
+        jnz x4
         dec ax
-        jnz x1
+        jnz x3
         pop ax
         pop cx
         ret
 delay1 endp
 code   ends
 end start
+
 
 
 
